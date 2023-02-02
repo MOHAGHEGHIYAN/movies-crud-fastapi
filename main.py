@@ -15,6 +15,11 @@ async def root():
     return {"message": "hello, world!"}
 
 
+@app.get("/movies/")
+def get_movies():
+    return movies
+
+
 @app.get("/movies/{movie_id}/")
 def get_movie(movie_id: int):
     movie = None
@@ -25,6 +30,18 @@ def get_movie(movie_id: int):
     return movie
 
 
-@app.get("/movies/")
-def get_movies():
-    return movies
+@app.delete("/movies/{movie_id}/")
+def delete_movie(movie_id: int):
+    index = -1
+    for i, item in enumerate(movies):
+        print(i, item)
+        if item["id"] == movie_id:
+            index = i
+            break
+
+    response = {}
+    if index <= -1:
+        return {"error": f" no movie found for id {movie_id}"}
+
+    del movies[index]
+    return {"message": f"movie with id {movie_id} deleted."}
