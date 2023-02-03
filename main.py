@@ -22,26 +22,37 @@ def get_movies():
 
 @app.get("/movies/{movie_id}/")
 def get_movie(movie_id: int):
-    movie = None
     try:
-        movie = list(filter(lambda x: x["id"] == movie_id, movies))[0]
+        return list(filter(lambda x: x["id"] == movie_id, movies))[0]
     except IndexError:
-        movie = {"error": f" no movie found for id {movie_id}"}
-    return movie
+        return movie_not_found_response(movie_id)
 
 
 @app.delete("/movies/{movie_id}/")
 def delete_movie(movie_id: int):
+    index = find_movie_index(movie_id)
+
+    if index <= -1:
+        return movie_not_found_response(movie_id)
+
+    del movies[index]
+    return {"message": f"movie with id {movie_id} deleted."}
+
+
+def movie_not_found_response(movie_id):
+    return {"error": f" no movie found for id {movie_id}"}
+
+
+def find_movie_index(movie_id):
     index = -1
     for i, item in enumerate(movies):
         print(i, item)
         if item["id"] == movie_id:
             index = i
             break
+    return index
 
-    response = {}
-    if index <= -1:
-        return {"error": f" no movie found for id {movie_id}"}
 
-    del movies[index]
-    return {"message": f"movie with id {movie_id} deleted."}
+@app.post("/movies/")
+def create_movie(movie: dict):
+    movies.append(movie)
