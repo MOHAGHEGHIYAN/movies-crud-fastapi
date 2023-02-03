@@ -56,3 +56,12 @@ def find_movie_index(movie_id):
 @app.post("/movies/")
 def create_movie(movie: dict):
     movies.append(movie)
+
+
+@app.patch("/movies/{movie_id}")
+def update_movie(movie_id: int, movie: dict):
+    index = find_movie_index(movie_id)
+    if index <= -1:
+        return movie_not_found_response(movie_id)
+
+    movies[index].update(movie)
