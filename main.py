@@ -1,13 +1,19 @@
 from fastapi import FastAPI
+from mysql import connector
 
+import os
 
 app = FastAPI()
 
 
-movies = [
-    {"id": 1, "title": "The Shawshank Redemption", "genres": ["Crime", "Drama"]},
-    {"id": 2, "title": "The Godfather", "genres": ["Crime", "Drama"]},
-]
+db = connector.connect(
+    host=os.getenv("MYSQL_DB_HOST"),
+    port=os.getenv("MYSQL_DB_PORT"),
+    user=os.getenv("MYSQL_DB_USER"),
+    password=os.getenv("MYSQL_DB_PASS"),
+    database=os.getenv("MYSQL_DB_NAME"),
+)
+db_cursor = db.cursor()
 
 
 @app.get("/")
@@ -17,51 +23,47 @@ async def root():
 
 @app.get("/movies/")
 def get_movies():
-    return movies
+    db_cursor.execute("SELECT * FROM movies")
+    return db_cursor.fetchall()
 
 
 @app.get("/movies/{movie_id}/")
 def get_movie(movie_id: int):
-    try:
-        return list(filter(lambda x: x["id"] == movie_id, movies))[0]
-    except IndexError:
+    sql = "SELECT * FROM movies WHERE id=%s"
+    values = (movie_id,)
+    db_cursor.execute(sql, values)
+    if movies := db_cursor.fetchall():
+        return movies[0]
+    else:
         return movie_not_found_response(movie_id)
-
-
-@app.delete("/movies/{movie_id}/")
-def delete_movie(movie_id: int):
-    index = find_movie_index(movie_id)
-
-    if index <= -1:
-        return movie_not_found_response(movie_id)
-
-    del movies[index]
-    return {"message": f"movie with id {movie_id} deleted."}
 
 
 def movie_not_found_response(movie_id):
     return {"error": f" no movie found for id {movie_id}"}
 
 
-def find_movie_index(movie_id):
-    index = -1
-    for i, item in enumerate(movies):
-        print(i, item)
-        if item["id"] == movie_id:
-            index = i
-            break
-    return index
-
-
 @app.post("/movies/")
 def create_movie(movie: dict):
-    movies.append(movie)
+    sql = "INSERT INTO movies (title, genres) VALUES (%s, %s)"
+    val = (movie["title"], movie["genres"])
+    db_cursor.execute(sql, val)
+    db.commit()
+    return {"message": "new movie created"}
 
 
 @app.patch("/movies/{movie_id}")
 def update_movie(movie_id: int, movie: dict):
-    index = find_movie_index(movie_id)
-    if index <= -1:
-        return movie_not_found_response(movie_id)
+    sql = "UPDATE movies SET title=%s, genres=%s WHERE id=%s"
+    val = (movie["title"], movie["genres"], movie_id)
+    db_cursor.execute(sql, val)
+    db.commit()
+    return {"message": "movie updated"}
 
-    movies[index].update(movie)
+
+@app.delete("/movies/{movie_id}/")
+def delete_movie(movie_id: int):
+    sql = "DELETE FROM movies WHERE id=%s"
+    val = (movie_id,)
+    db_cursor.execute(sql, val)
+    db.commit()
+    return {"message": "movie deleted"}
