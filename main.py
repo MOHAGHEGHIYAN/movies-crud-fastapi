@@ -1,14 +1,16 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, HTTPException
 from mysql import connector
 
-import os
+from models.movie import Movie
 
 app = FastAPI()
 
 
 db = connector.connect(
     host=os.getenv("MYSQL_DB_HOST"),
-    port=os.getenv("MYSQL_DB_PORT"),
+    port=int(os.getenv("MYSQL_DB_PORT")),
     user=os.getenv("MYSQL_DB_USER"),
     password=os.getenv("MYSQL_DB_PASS"),
     database=os.getenv("MYSQL_DB_NAME"),
@@ -35,7 +37,7 @@ def get_movie(movie_id: int):
     if movies := db_cursor.fetchall():
         return movies[0]
     else:
-        return movie_not_found_response(movie_id)
+        raise HTTPException(status_code=403, detail="not found")
 
 
 def movie_not_found_response(movie_id):
@@ -43,18 +45,18 @@ def movie_not_found_response(movie_id):
 
 
 @app.post("/movies/")
-def create_movie(movie: dict):
+def create_movie(movie: Movie):
     sql = "INSERT INTO movies (title, genres) VALUES (%s, %s)"
-    val = (movie["title"], movie["genres"])
+    val = (movie.title, movie.genres)
     db_cursor.execute(sql, val)
     db.commit()
     return {"message": "new movie created"}
 
 
 @app.patch("/movies/{movie_id}")
-def update_movie(movie_id: int, movie: dict):
+def update_movie(movie_id: int, movie: Movie):
     sql = "UPDATE movies SET title=%s, genres=%s WHERE id=%s"
-    val = (movie["title"], movie["genres"], movie_id)
+    val = (movie.title, movie.genres, movie_id)
     db_cursor.execute(sql, val)
     db.commit()
     return {"message": "movie updated"}
